@@ -1,6 +1,6 @@
 # Chrome Web Store başvuru metinleri
 
-Yükleme dosyası: `dist/TektikUYAP-1.0.2.zip` (oluşturmak için: `zip -qr dist/TektikUYAP-1.0.2.zip manifest.json src icons LICENSE`)
+Yükleme dosyası: `dist/TektikUYAP-1.0.3.zip` (oluşturmak için: `zip -qr dist/TektikUYAP-1.0.3.zip manifest.json src icons LICENSE`)
 
 ## Mağaza girişi
 **Ad:** TektikUYAP

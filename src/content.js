@@ -5,6 +5,7 @@
   const evraklar = new Map(); // evrakId -> {evrakId, dosyaId, ad, tarih}
   let sonDosyaId = null;
   let dosyaAdi = null;
+  let dosyaBasligi = null; // ekranda görünen "2026/113 - ... Mahkemesi - ..." başlığı
 
   const ID_KEYS = ['evrakId', 'evrakID', 'evrak_id', 'evrakid'];
   const DOSYA_KEYS = ['dosyaId', 'dosyaID', 'dosya_id', 'dosyaid'];
@@ -69,8 +70,9 @@
     }
     // Dosya başlığı: "2026/113 - Bor 3. Asliye Ceza Mahkemesi - Talimat Dosyası" biçimindeki görünür başlık
     const baslik = [...document.querySelectorAll('.modal-title, h4, .caption')]
-      .find(b => b.offsetParent !== null && /\d{4}\/\d+/.test(b.textContent));
-    if (baslik) dosyaAdi = baslik.textContent.trim().replace(/\s+/g, ' ');
+      .map(b => ({ b, t: b.textContent.trim().replace(/\s+/g, ' ') }))
+      .find(({ b, t }) => b.getClientRects().length && t.length < 200 && /^\d{4}\/\d+\s*-/.test(t));
+    dosyaBasligi = baslik ? baslik.t : null;
     // "Dosyaya Eklenen Son 20 Evrak" klasörü "Tüm Evraklar"ın kopyasıdır; tekrar indirmemek için atlanır
     const kopyaKlasor = (el) => {
       for (let li = el.closest('li'); li; li = li.parentElement && li.parentElement.closest('li')) {
@@ -226,7 +228,7 @@
     const zip = TektikZip.build(dosyalar);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(zip);
-    a.download = `${temiz(dosyaAdi || 'UYAP Dosya ' + (sonDosyaId || ''))} - evraklar.zip`;
+    a.download = `${temiz(dosyaBasligi || dosyaAdi || 'UYAP Dosya ' + (sonDosyaId || ''))} - evraklar.zip`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
     btn.disabled = false;
@@ -234,6 +236,8 @@
   };
 
   // Sayfa sürekli değiştiği (saat vb.) için erteleme yerine en fazla 700 ms'de bir tara
+  // Ek güvence: bazı tarayıcılarda gözlemci tetiklenmeyebildiği için sekme görünürken düzenli tara
+  setInterval(() => { if (!document.hidden) domTara(); }, 1500);
   let bekleyen = false;
   new MutationObserver(() => {
     if (bekleyen) return;
