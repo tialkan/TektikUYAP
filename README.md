@@ -37,4 +37,4 @@ Pull request'ler memnuniyetle karşılanır. Özellikle portal güncellemelerine
 Bu eklenti UYAP veya Adalet Bakanlığı ile bağlantılı değildir. Yalnızca kullanıcının yetkili olduğu dosyalara, kendi oturumuyla erişir. Kullanım sorumluluğu kullanıcıya aittir.
 
 ## Lisans
-[MIT](LICENSE)
+[MIT](LICENSE) · [Gizlilik Politikası](PRIVACY.md)
