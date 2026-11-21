@@ -1,0 +1,14 @@
+#tektik-root{position:fixed;right:18px;bottom:18px;z-index:2147483647;font:13px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#1d2433}
+#tektik-fab{background:#8b1e2d;color:#fff;border:0;border-radius:24px;padding:10px 16px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+#tektik-panel{position:absolute;right:0;bottom:52px;width:380px;max-height:70vh;display:flex;flex-direction:column;background:#fff;border:1px solid #d9dde5;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:12px;gap:8px}
+#tektik-panel[hidden]{display:none}
+#tektik-panel .tk-bas{display:flex;justify-content:space-between;align-items:center;font-size:15px}
+#tektik-panel .tk-bas button{border:0;background:none;font-size:20px;cursor:pointer}
+#tektik-panel .tk-ipucu{margin:0;color:#5b6475;font-size:12px}
+#tektik-panel .tk-arac{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#tektik-panel .tk-arac button{border:1px solid #c7ccd6;background:#f5f6f8;border-radius:6px;padding:3px 8px;cursor:pointer}
+#tektik-liste{list-style:none;margin:0;padding:0;overflow:auto;flex:1;border-top:1px solid #eee;border-bottom:1px solid #eee}
+#tektik-liste li{display:flex;gap:6px;padding:4px 2px;border-bottom:1px solid #f2f2f2}
+#tektik-panel .tk-ana{background:#8b1e2d;color:#fff;border:0;border-radius:6px;padding:8px;font-weight:600;cursor:pointer}
+#tektik-panel .tk-ana:disabled{opacity:.6;cursor:wait}
+#tektik-durum{font-size:12px;color:#334;min-height:16px}
