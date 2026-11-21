@@ -61,14 +61,16 @@
   const RE_DL = /downloadDoc\(\s*\$\(this\)\.attr\(['"]evrak_id['"]\)\s*,\s*['"]+([^'"]+)['"]+\s*,\s*['"](\w+)['"]/;
   function agacTara() {
     const dugumler = document.querySelectorAll('[evrak_id]');
-    if (!dugumler.length) return;
+    if (!dugumler.length) return false;
     let dosyaId = null, yargiTuru = null;
     for (const sc of document.scripts) {
       const m = !sc.src && sc.textContent.match(RE_DL);
       if (m) { dosyaId = m[1]; yargiTuru = m[2]; }
     }
-    const baslik = document.querySelector('.modal.in .modal-title, .modal.show .modal-title, .modal-title');
-    if (baslik && baslik.textContent.trim()) dosyaAdi = baslik.textContent.trim();
+    // Dosya başlığı: "2026/113 - Bor 3. Asliye Ceza Mahkemesi - Talimat Dosyası" biçimindeki görünür başlık
+    const baslik = [...document.querySelectorAll('.modal-title, h4, .caption')]
+      .find(b => b.offsetParent !== null && /\d{4}\/\d+/.test(b.textContent));
+    if (baslik) dosyaAdi = baslik.textContent.trim().replace(/\s+/g, ' ');
     // "Dosyaya Eklenen Son 20 Evrak" klasörü "Tüm Evraklar"ın kopyasıdır; tekrar indirmemek için atlanır
     const kopyaKlasor = (el) => {
       for (let li = el.closest('li'); li; li = li.parentElement && li.parentElement.closest('li')) {
@@ -86,9 +88,13 @@
       const t = parca.match(/(\d{2}\/\d{2}\/\d{4})$/);
       ekle(el.getAttribute('evrak_id'), dosyaId, t ? parca.slice(0, -t[1].length).trim() : parca.slice(0, 80), t ? t[1] : '', yargiTuru);
     });
+    // Ağaç bulunduysa, dosyaya bağlanamayan (genel taramadan gelen) kayıtları at
+    if (dosyaId) for (const [k, v] of evraklar) if (!v.dosyaId) evraklar.delete(k);
+    guncelle();
+    return true;
   }
   function domTara() {
-    agacTara();
+    if (agacTara()) return;
     document.querySelectorAll('[data-evrak-id],[evrakid],[data-evrakid],a[href*="evrakId" i],[onclick*="evrak" i],[id*="evrak" i]').forEach(el => {
       const attrs = Array.from(el.attributes).map(a => `${a.name}=${a.value}`).join(' ');
       const m = attrs.match(RE) || (el.dataset.evrakId && [0, el.dataset.evrakId]);
@@ -123,6 +129,11 @@
     $('#tektik-sayi').textContent = evraklar.size;
     if ($('#tektik-panel').hidden) return;
     const ul = $('#tektik-liste');
+    // Liste değişmediyse yeniden çizme (kullanıcının işaretlemeleri korunur)
+    const imza = [...evraklar.keys()].join('|');
+    if (ul.dataset.imza === imza) return;
+    const oncekiler = new Set([...ul.querySelectorAll('input')].map(i => i.value));
+    ul.dataset.imza = imza;
     const secili = new Set([...ul.querySelectorAll('input:checked')].map(i => i.value));
     const ilk = ul.children.length === 0;
     ul.innerHTML = '';
@@ -130,7 +141,7 @@
       const li = document.createElement('li');
       const cb = document.createElement('input');
       cb.type = 'checkbox'; cb.value = e.evrakId;
-      cb.checked = ilk || secili.has(e.evrakId) || $('#tektik-hepsi').checked;
+      cb.checked = ilk || secili.has(e.evrakId) || (!oncekiler.has(e.evrakId) && $('#tektik-hepsi').checked);
       const sp = document.createElement('span');
       sp.textContent = `${e.ad}${e.tarih ? ' — ' + e.tarih : ''}`;
       li.append(cb, sp);
@@ -141,7 +152,7 @@
   $('#tektik-fab').onclick = () => { domTara(); $('#tektik-panel').hidden = !$('#tektik-panel').hidden; guncelle(); };
   $('#tektik-kapat').onclick = () => { $('#tektik-panel').hidden = true; };
   $('#tektik-tara').onclick = () => { domTara(); guncelle(); };
-  $('#tektik-temizle').onclick = () => { evraklar.clear(); dosyaAdi = null; $('#tektik-liste').innerHTML = ''; guncelle(); };
+  $('#tektik-temizle').onclick = () => { evraklar.clear(); dosyaAdi = null; const ul = $('#tektik-liste'); ul.innerHTML = ''; delete ul.dataset.imza; guncelle(); };
   $('#tektik-hepsi').onchange = (e) => $('#tektik-liste').querySelectorAll('input').forEach(i => (i.checked = e.target.checked));
 
   const durum = (t) => ($('#tektik-durum').textContent = t);
@@ -222,7 +233,13 @@
     durum(`Tamamlandı: ${basarili} evrak indirildi${hatalar.length ? `, ${hatalar.length} hata (_HATALAR.txt)` : ''}.`);
   };
 
-  new MutationObserver(() => { clearTimeout(domTara._t); domTara._t = setTimeout(domTara, 800); })
+  // Sayfa sürekli değiştiği (saat vb.) için erteleme yerine en fazla 700 ms'de bir tara
+  let bekleyen = false;
+  new MutationObserver(() => {
+    if (bekleyen) return;
+    bekleyen = true;
+    setTimeout(() => { bekleyen = false; domTara(); }, 700);
+  })
     .observe(document.documentElement, { childList: true, subtree: true });
   domTara();
 })();
