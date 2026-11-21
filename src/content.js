@@ -15,14 +15,22 @@
 
   const pick = (o, keys) => { for (const k of keys) if (o[k] != null && o[k] !== '') return o[k]; };
 
-  function ekle(evrakId, dosyaId, ad, tarih) {
-    evrakId = String(evrakId).trim();
-    if (!/^[\w\-=+/]{3,}$/.test(evrakId)) return;
-    if (dosyaId) sonDosyaId = String(dosyaId);
+  let sonYargiTuru = null;
+  const tirnaksiz = (v) => String(v).trim().replace(/^["']+|["']+$/g, '');
+
+  function ekle(evrakId, dosyaId, ad, tarih, yargiTuru) {
+    evrakId = tirnaksiz(evrakId);
+    if (!/^[\w\-=+/@.]{3,}$/.test(evrakId)) return;
+    if (dosyaId) dosyaId = tirnaksiz(dosyaId);
+    // Başka bir dosya açıldıysa eski dosyanın evraklarını listeden çıkar
+    if (dosyaId && sonDosyaId && dosyaId !== sonDosyaId) { evraklar.clear(); dosyaAdi = null; }
+    if (dosyaId) sonDosyaId = dosyaId;
+    if (yargiTuru) sonYargiTuru = String(yargiTuru);
     const eski = evraklar.get(evrakId) || {};
     evraklar.set(evrakId, {
       evrakId,
-      dosyaId: dosyaId ? String(dosyaId) : eski.dosyaId,
+      dosyaId: dosyaId || eski.dosyaId,
+      yargiTuru: yargiTuru ? String(yargiTuru) : eski.yargiTuru,
       ad: ad || eski.ad || 'evrak',
       tarih: tarih || eski.tarih || ''
     });
@@ -37,7 +45,7 @@
     const no = pick(node, NO_KEYS), birim = pick(node, BIRIM_KEYS);
     if (no || birim) dosyaAdi = [birim, no].filter(Boolean).join(' ') || dosyaAdi;
     const id = pick(node, ID_KEYS);
-    if (id != null && typeof id !== 'object') ekle(id, d, pick(node, AD_KEYS), pick(node, TARIH_KEYS));
+    if (id != null && typeof id !== 'object') ekle(id, d, pick(node, AD_KEYS), pick(node, TARIH_KEYS), node.yargiTuru);
     for (const v of Object.values(node)) if (v && typeof v === 'object') gez(v, d, derinlik + 1);
   }
   window.addEventListener('message', (e) => {
@@ -46,9 +54,41 @@
   });
 
   // 2) Sayfadaki öğelerden toplama (ağaç düğümleri, bağlantılar, onclick)
-  const RE = /evrak_?id["'\s:=]+["']?([\w\-=+/]{3,})/i;
-  const RE_D = /dosya_?id["'\s:=]+["']?([\w\-=+/]{3,})/i;
+  const RE = /evrak_?id["'\s:=]+["']*([\w\-=+/@.]{3,})/i;
+  const RE_D = /dosya_?id["'\s:=]+["']*([\w\-=+/@.]{3,})/i;
+  // Vatandaş/Bilirkişi portalı: evrak ağacı (span.file[evrak_id]); dosyaId ve yargı türü
+  // ağacın yanındaki satır içi betikte downloadDoc($(this).attr('evrak_id'), '"<dosyaId>"', '<yargiTuru>') olarak bulunur.
+  const RE_DL = /downloadDoc\(\s*\$\(this\)\.attr\(['"]evrak_id['"]\)\s*,\s*['"]+([^'"]+)['"]+\s*,\s*['"](\w+)['"]/;
+  function agacTara() {
+    const dugumler = document.querySelectorAll('[evrak_id]');
+    if (!dugumler.length) return;
+    let dosyaId = null, yargiTuru = null;
+    for (const sc of document.scripts) {
+      const m = !sc.src && sc.textContent.match(RE_DL);
+      if (m) { dosyaId = m[1]; yargiTuru = m[2]; }
+    }
+    const baslik = document.querySelector('.modal.in .modal-title, .modal.show .modal-title, .modal-title');
+    if (baslik && baslik.textContent.trim()) dosyaAdi = baslik.textContent.trim();
+    // "Dosyaya Eklenen Son 20 Evrak" klasörü "Tüm Evraklar"ın kopyasıdır; tekrar indirmemek için atlanır
+    const kopyaKlasor = (el) => {
+      for (let li = el.closest('li'); li; li = li.parentElement && li.parentElement.closest('li')) {
+        const k = li.querySelector(':scope > span.folder, :scope > span');
+        if (k && /son\s*\d+\s*evrak/i.test(k.textContent)) return true;
+      }
+      return false;
+    };
+    const tumuVar = [...document.querySelectorAll('span.folder')].some(f => /t[üu]m evraklar/i.test(f.textContent));
+    dugumler.forEach(el => {
+      if (tumuVar && kopyaKlasor(el)) return;
+      const li = el.closest('li');
+      const ad = (li && li.getAttribute('data-sid')) || el.textContent;
+      const parca = String(ad || '').trim().replace(/\s+/g, ' ');
+      const t = parca.match(/(\d{2}\/\d{2}\/\d{4})$/);
+      ekle(el.getAttribute('evrak_id'), dosyaId, t ? parca.slice(0, -t[1].length).trim() : parca.slice(0, 80), t ? t[1] : '', yargiTuru);
+    });
+  }
   function domTara() {
+    agacTara();
     document.querySelectorAll('[data-evrak-id],[evrakid],[data-evrakid],a[href*="evrakId" i],[onclick*="evrak" i],[id*="evrak" i]').forEach(el => {
       const attrs = Array.from(el.attributes).map(a => `${a.name}=${a.value}`).join(' ');
       const m = attrs.match(RE) || (el.dataset.evrakId && [0, el.dataset.evrakId]);
@@ -113,7 +153,7 @@
     if (m) { const x = decodeURIComponent(m[1]).match(/\.(\w{2,5})$/); if (x) return x[1].toLowerCase(); }
     const h = String.fromCharCode(...bytes.slice(0, 5));
     if (h.startsWith('%PDF')) return 'pdf';
-    if (h.startsWith('PK')) return 'zip';
+    if (h.startsWith('PK')) return 'udf'; // UYAP UDF belgeleri ZIP tabanlıdır
     if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'jpg';
     if (h.startsWith('\x89PNG')) return 'png';
     if (h.startsWith('II*') || h.startsWith('MM')) return 'tif';
@@ -139,8 +179,15 @@
     for (let i = 0; i < ids.length; i++) {
       const e = evraklar.get(ids[i]);
       durum(`İndiriliyor ${i + 1}/${ids.length}: ${e.ad}`);
+      const yt = e.yargiTuru || sonYargiTuru || '1';
+      let adres = tpl;
+      // UYAP, Danıştay (2) ve Yargıtay (3) evrakları için ayrı indirme servisleri kullanır
+      if (yt === '2') adres = adres.replace('download_document_brd', 'download_document_danistay_brd');
+      if (yt === '3') adres = adres.replace('download_document_brd', 'download_document_yargitay_brd');
       const url = new URL(
-        tpl.replace('{evrakId}', encodeURIComponent(e.evrakId)).replace('{dosyaId}', encodeURIComponent(e.dosyaId || sonDosyaId || '')),
+        adres.replace('{evrakId}', encodeURIComponent(e.evrakId))
+          .replace('{dosyaId}', encodeURIComponent(e.dosyaId || sonDosyaId || ''))
+          .replace('{yargiTuru}', encodeURIComponent(yt)),
         location.origin
       );
       try {

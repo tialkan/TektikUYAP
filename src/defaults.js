@@ -1,11 +1,12 @@
 // Portal başına varsayılan evrak indirme adresi şablonları.
-// {evrakId}, {dosyaId} yer tutucuları doldurulur. Adres göreli ise açık olan portalın alan adı kullanılır.
+// {evrakId}, {dosyaId}, {yargiTuru} yer tutucuları doldurulur. Adres göreli ise açık olan portalın alan adı kullanılır.
 // UYAP adresleri değişirse Ayarlar sayfasından güncellenebilir.
+// Not: Avukat portalı yargiTuru parametresini yok sayar; Vatandaş/Bilirkişi portalı kullanır.
 const TEKTIK_DEFAULTS = {
   templates: {
-    avukat: '/download_document_brd.uyap?evrakId={evrakId}&dosyaId={dosyaId}',
-    bilirkisi: '/download_document_brd.uyap?evrakId={evrakId}&dosyaId={dosyaId}',
-    vatandas: '/download_document_brd.uyap?evrakId={evrakId}&dosyaId={dosyaId}'
+    avukat: '/download_document_brd.uyap?evrakId={evrakId}&dosyaId={dosyaId}&yargiTuru={yargiTuru}',
+    bilirkisi: '/download_document_brd.uyap?evrakId={evrakId}&dosyaId={dosyaId}&yargiTuru={yargiTuru}',
+    vatandas: '/download_document_brd.uyap?evrakId={evrakId}&dosyaId={dosyaId}&yargiTuru={yargiTuru}'
   },
   delayMs: 400
 };
